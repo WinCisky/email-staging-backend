@@ -4,6 +4,11 @@ const db = new sqlite3.Database('emails.sql');
 // Require the framework and instantiate it
 const fastify = require('fastify')({ logger: false })
 
+// Register the @fastify/cors plugin
+fastify.register(require('@fastify/cors'), { 
+  origin: '*' // Allow all origins
+})
+
 // Declare a route
 fastify.get('/emails', async function handler (request, reply) {
   const { username, password, page = 1 } = request.query;
