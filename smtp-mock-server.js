@@ -1,3 +1,4 @@
+const fs = require('fs');
 const { SMTPServer } = require('smtp-server');
 const sqlite3 = require('sqlite3');
 
@@ -25,6 +26,9 @@ db.run(`
 `);
 
 const server = new SMTPServer({
+    secure: true,
+    key: fs.readFileSync("/etc/letsencrypt/live/test.opentrust.it/privkey.pem"),
+    cert: fs.readFileSync("/etc/letsencrypt/live/test.opentrust.it/fullchain.pem"),
     authOptional: true,
     allowInsecureAuth: true,
     onData(stream, session, callback) {
@@ -35,7 +39,7 @@ const server = new SMTPServer({
         });
 
         stream.on('end', () => {
-            // console.log('Email received');
+            console.log('Email received');
 
             const credentials = session.credentials;
 
@@ -51,7 +55,7 @@ const server = new SMTPServer({
                 if (err) {
                     console.error("Error inserting email into SQLite:", err);
                 } else {
-                    // console.log("Email saved to SQLite");
+                    console.log("Email saved to SQLite");
                 }
             });
             stmt.finalize();
@@ -70,27 +74,32 @@ const server = new SMTPServer({
 
     // Handle SMTP session details
     onConnect(session, callback) {
-        // console.log('Client connected');
+        console.log('Client connected');
         callback();
     },
 
     onMailFrom(address, session, callback) {
-        // console.log(`Mail from: ${address.address}`);
+        console.log(`Mail from: ${address.address}`);
         callback();
     },
 
     onRcptTo(address, session, callback) {
-        // console.log(`Mail to: ${address.address}`);
+        console.log(`Mail to: ${address.address}`);
         callback();
     },
 
     onQuit(callback) {
-        // console.log('Client disconnected');
+        console.log('Client disconnected');
         callback();
     }
 });
 
+// Gestore di errori per catturare eventuali errori TLS
+server.on('error', (err) => {
+    console.error('SMTP Server Error:', err);
+});
+
 // Start the mock SMTP server on port 2525
-server.listen(2525, () => {
+server.listen(465, () => {
     console.log('SMTP server listening on port 2525');
 });
