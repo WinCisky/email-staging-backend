@@ -21,7 +21,7 @@ fastify.get('/emails', async function handler (request, reply) {
 
   try {
     const result = await new Promise((resolve, reject) => {
-      const query = 'SELECT * FROM emails WHERE username = ? AND password = ? LIMIT ? OFFSET ?';
+      const query = 'SELECT * FROM emails WHERE username = ? AND password = ? ORDER BY date DESC LIMIT ? OFFSET ?';
       db.all(query, [username, password, pageSize, offset], (err, rows) => {
         if (err) {
           reject(err);
