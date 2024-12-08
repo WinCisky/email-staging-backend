@@ -21,9 +21,28 @@ db.run(`
     recipients TEXT,
     subject TEXT,
     content TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT 0
   )
 `);
+
+// Check if the is_read column exists, and add it if it doesn't
+db.get("PRAGMA table_info(emails)", (err, columns) => {
+    if (err) {
+        console.error("Error checking table info:", err);
+    } else {
+        const columnNames = columns.map(column => column.name);
+        if (!columnNames.includes('is_read')) {
+            db.run("ALTER TABLE emails ADD COLUMN is_read BOOLEAN DEFAULT 0", (err) => {
+                if (err) {
+                    console.error("Error adding is_read column:", err);
+                } else {
+                    console.log("is_read column added to emails table");
+                }
+            });
+        }
+    }
+});
 
 const server = new SMTPServer({
     secure: true,
