@@ -37,7 +37,7 @@ fastify.get('/emails', async function handler (request, reply) {
 });
 
 // Run the server!
-fastify.listen({ port: 3000 }, (err) => {
+fastify.listen({ port: 3628 }, (err) => {
   if (err) {
     fastify.log.error(err)
     process.exit(1)
