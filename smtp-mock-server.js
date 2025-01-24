@@ -83,6 +83,10 @@ const server = new SMTPServer({
         });
     },
 
+    onSecure(socket, session, callback) {
+        callback();
+    },
+
     onAuth(auth, session, callback) {
         const username = auth.username;
         const password = auth.password;
