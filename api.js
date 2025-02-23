@@ -85,7 +85,7 @@ fastify.post('/emails/stats', async function handler (request, reply) {
           if (err) {
             reject(err);
           } else {
-            resolve({ username, totalEmails: row.totalEmails, lastEmailDate: row.lastEmailDate });
+            resolve({ username, password, totalEmails: row.totalEmails, lastEmailDate: row.lastEmailDate });
           }
         });
       });
