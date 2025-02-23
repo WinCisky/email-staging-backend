@@ -65,6 +65,38 @@ fastify.patch('/emails/read/:id', async function handler (request, reply) {
   }
 });
 
+fastify.get('/emails/stats', async function handler (request, reply) {
+  const accounts = request.query.accounts;
+
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    return reply.status(400).send({ error: 'Accounts array is required' });
+  }
+
+  try {
+    const results = await Promise.all(accounts.map(account => {
+      const { username, password } = account;
+      return new Promise((resolve, reject) => {
+        const query = `
+          SELECT COUNT(*) as totalEmails, MAX(timestamp) as lastEmailDate
+          FROM emails
+          WHERE username = ? AND password = ?
+        `;
+        db.get(query, [username, password], (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ username, totalEmails: row.totalEmails, lastEmailDate: row.lastEmailDate });
+          }
+        });
+      });
+    }));
+
+    reply.send(results);
+  } catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
+});
+
 // Run the server!
 fastify.listen({ port: 3628 }, (err) => {
   if (err) {
