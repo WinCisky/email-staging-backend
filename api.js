@@ -65,8 +65,8 @@ fastify.patch('/emails/read/:id', async function handler (request, reply) {
   }
 });
 
-fastify.get('/emails/stats', async function handler (request, reply) {
-  const accounts = request.query.accounts;
+fastify.post('/emails/stats', async function handler (request, reply) {
+  const accounts = request.body.accounts;
 
   if (!Array.isArray(accounts) || accounts.length === 0) {
     return reply.status(400).send({ error: 'Accounts array is required' });
