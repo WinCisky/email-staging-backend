@@ -97,6 +97,34 @@ fastify.post('/emails/stats', async function handler (request, reply) {
   }
 });
 
+fastify.post('/emails/burn', async function handler (request, reply) {
+  const { username, password } = request.body;
+
+  if (!username || !password) {
+    return reply.status(400).send({ error: 'Username and password are required' });
+  }
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const query = 'DELETE FROM emails WHERE username = ? AND password = ?';
+      db.run(query, [username, password], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.changes);
+        }
+      });
+    });
+    if (result === 0) {
+      reply.status(404).send({ error: 'No emails found for the given account' });
+    } else {
+      reply.send({ success: true, deletedEmails: result });
+    }
+  } catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
+});
+
 // Run the server!
 fastify.listen({ port: 3628 }, (err) => {
   if (err) {
