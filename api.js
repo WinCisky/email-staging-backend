@@ -38,7 +38,7 @@ fastify.get('/emails', async function handler (request, reply) {
 
 fastify.patch('/emails/read/:id', async function handler (request, reply) {
   const { id } = request.params;
-  const { username, password } = request.query;
+  const { username, password } = request.body;
 
   if (!username || !password) {
     return reply.status(400).send({ error: 'Username and password are required' });
@@ -66,7 +66,7 @@ fastify.patch('/emails/read/:id', async function handler (request, reply) {
 });
 
 fastify.post('/emails/stats', async function handler (request, reply) {
-  const accounts = request.body.accounts;
+  const accounts = request.body;
 
   if (!Array.isArray(accounts) || accounts.length === 0) {
     return reply.status(400).send({ error: 'Accounts array is required' });
