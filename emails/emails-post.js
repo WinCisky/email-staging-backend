@@ -1,5 +1,5 @@
 import sqlite3 from 'sqlite3';
-const db = new sqlite3.Database('../emails.sql');
+const db = new sqlite3.Database('emails.sql');
 
 export async function postEmailStats(request, reply) {
     const accounts = request.body;
