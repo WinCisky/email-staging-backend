@@ -29,3 +29,32 @@ export async function patchReadEmail(request, reply) {
         reply.status(500).send({ error: err.message });
     }
 }
+
+export async function patchEmailDelete(request, reply) {
+    const { id } = request.params;
+    const { username, password } = request.body;
+
+    if (!username || !password) {
+        return reply.status(400).send({ error: 'Username and password are required' });
+    }
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const query = 'DELETE FROM emails WHERE id = ? AND username = ? AND password = ?';
+            db.run(query, [id, username, password], function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes);
+                }
+            });
+        });
+        if (result === 0) {
+            reply.status(404).send({ error: 'Email not found' });
+        } else {
+            reply.send({ success: true });
+        }
+    } catch (err) {
+        reply.status(500).send({ error: err.message });
+    }
+}

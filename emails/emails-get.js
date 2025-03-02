@@ -26,3 +26,28 @@ export async function getEmails(request, reply) {
         reply.status(500).send({ error: err.message });
     }
 }
+
+export async function getDeltaEmails(request, reply) {
+    const { username, password, latest } = request.query;
+
+    if (!username || !password || !latest) {
+        return reply.status(400).send({ error: 'Username, password, and latest are required' });
+    }
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            // get emails since the latest email id
+            const query = 'SELECT * FROM emails WHERE username = ? AND password = ? AND id > ?';
+            db.all(query, [username, password, latest], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+        reply.send(result);
+    } catch (err) {
+        reply.status(500).send({ error: err.message });
+    }
+}
