@@ -1,36 +1,34 @@
-const { getEmails } = require('./emails/emails-get');
-const { patchReadEmail } = require('./emails/emails-patch');
-const { postEmailStats, postEmailBurn } = require('./emails/emails-post');
+import fastify from 'fastify';
+import cors from '@fastify/cors';
+import { getEmails } from './emails/emails-get.js';
+import { patchReadEmail } from './emails/emails-patch.js';
+import { postEmailStats, postEmailBurn } from './emails/emails-post.js';
 
-// Require the framework and instantiate it
-const fastify = require('fastify')({ logger: false })
+const app = fastify({ logger: false });
 
-// Register the @fastify/cors plugin
-fastify.register(require('@fastify/cors'), {
+app.register(cors, {
   origin: '*' // Allow all origins
-})
+});
 
-// Declare a route
-fastify.get('/emails', async function handler(request, reply) {
+app.get('/emails', async (request, reply) => {
   await getEmails(request, reply);
 });
 
-fastify.patch('/emails/read/:id', async function handler(request, reply) {
+app.patch('/emails/read/:id', async (request, reply) => {
   await patchReadEmail(request, reply);
 });
 
-fastify.post('/emails/stats', async function handler(request, reply) {
+app.post('/emails/stats', async (request, reply) => {
   await postEmailStats(request, reply);
 });
 
-fastify.post('/emails/burn', async function handler(request, reply) {
+app.post('/emails/burn', async (request, reply) => {
   await postEmailBurn(request, reply);
 });
 
-// Run the server!
-fastify.listen({ port: 3628 }, (err) => {
+app.listen({ port: 3628 }, (err) => {
   if (err) {
-    fastify.log.error(err)
-    process.exit(1)
+    app.log.error(err);
+    process.exit(1);
   }
-})
+});
