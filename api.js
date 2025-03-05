@@ -22,7 +22,7 @@ app.patch('/emails/read/:id', async (request, reply) => {
   await patchReadEmail(request, reply);
 });
 
-app.patch('emails/read/all', async (request, reply) => {
+app.patch('/emails/read/all', async (request, reply) => {
   await patchReadAllEmails(request, reply);
 });
 
