@@ -30,6 +30,30 @@ export async function patchReadEmail(request, reply) {
     }
 }
 
+export async function patchReadAllEmails(request, reply) {
+    const { username, password } = request.body;
+
+    if (!username || !password) {
+        return reply.status(400).send({ error: 'Username and password are required' });
+    }
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const query = 'UPDATE emails SET is_read = 1 WHERE username = ? AND password = ?';
+            db.run(query, [username, password], function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes);
+                }
+            });
+        });
+        reply.send({ success: true, updated: result });
+    } catch (err) {
+        reply.status(500).send({ error: err.message });
+    }
+}
+
 export async function patchEmailDelete(request, reply) {
     const { id } = request.params;
     const { username, password } = request.body;

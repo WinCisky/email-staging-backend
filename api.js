@@ -1,7 +1,7 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import { getEmails, getDeltaEmails } from './emails/emails-get.js';
-import { patchReadEmail } from './emails/emails-patch.js';
+import { patchReadAllEmails, patchReadEmail } from './emails/emails-patch.js';
 import { postEmailStats, postEmailBurn } from './emails/emails-post.js';
 
 const app = fastify({ logger: false });
@@ -20,6 +20,10 @@ app.get('/emails/delta', async (request, reply) => {
 
 app.patch('/emails/read/:id', async (request, reply) => {
   await patchReadEmail(request, reply);
+});
+
+app.patch('emails/read/all', async (request, reply) => {
+  await patchReadAllEmails(request, reply);
 });
 
 app.post('/emails/stats', async (request, reply) => {
