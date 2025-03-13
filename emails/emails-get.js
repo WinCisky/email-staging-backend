@@ -27,6 +27,30 @@ export async function getEmails(request, reply) {
     }
 }
 
+export async function getEmail(request, reply) {
+    const { username, password, id } = request.query;
+
+    if (!username || !password || !id) {
+        return reply.status(400).send({ error: 'Username, password, and id are required' });
+    }
+
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM emails WHERE username = ? AND password = ? AND id = ?';
+            db.get(query, [username, password, id], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+        reply.send(result);
+    } catch (err) {
+        reply.status(500).send({ error: err.message });
+    }
+}
+
 export async function getDeltaEmails(request, reply) {
     const { username, password, latest } = request.query;
 
