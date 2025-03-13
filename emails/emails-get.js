@@ -28,7 +28,8 @@ export async function getEmails(request, reply) {
 }
 
 export async function getEmail(request, reply) {
-    const { username, password, id } = request.query;
+    const { id } = request.params;
+    const { username, password } = request.query;
 
     if (!username || !password || !id) {
         return reply.status(400).send({ error: 'Username, password, and id are required' });
