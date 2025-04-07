@@ -1,6 +1,6 @@
-const fs = require('fs');
-const { SMTPServer } = require('smtp-server');
-const sqlite3 = require('sqlite3');
+import fs from 'fs';
+import { SMTPServer } from 'smtp-server';
+import sqlite3 from 'sqlite3';
 
 // Create or open the SQLite database
 const db = new sqlite3.Database('./emails.sql', (err) => {
