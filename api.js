@@ -1,5 +1,6 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
+import cron from 'node-cron';
 import { getEmails, getEmail, getDeltaEmails } from './emails/emails-get.js';
 import { patchReadAllEmails, patchReadEmail } from './emails/emails-patch.js';
 import { postEmailStats, postEmailBurn } from './emails/emails-post.js';
@@ -36,6 +37,14 @@ app.post('/emails/stats', async (request, reply) => {
 
 app.post('/emails/burn', async (request, reply) => {
   await postEmailBurn(request, reply);
+});
+
+cron.schedule('0 0 * * *', async () => {
+  try {
+    await deleteOldEmails();
+  } catch (error) {
+    console.error('Error deleting old emails:', error);
+  }
 });
 
 app.listen({ port: 3628 }, (err) => {
