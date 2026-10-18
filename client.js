@@ -1,32 +1,30 @@
-const nodemailer = require('nodemailer');
+// Development helper: sends a test email to the mock SMTP server.
+//
+//   npm run send-test-email -- [username] [password]
+//
+// Targets the local dev server (npm run dev) by default.
+// For another server set SMTP_HOST, SMTP_PORT and SMTP_SECURE=true (implicit TLS, certificate verified).
+import nodemailer from 'nodemailer';
 
-// Create a transporter object using the SMTP server details
-let transporter = nodemailer.createTransport({
-    host: 'localhost', // Replace with your SMTP server host
-    port: 2525, // Replace with your SMTP server port
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: 'your_username1', // Replace with your SMTP username
-        pass: 'your_password2'  // Replace with your SMTP password
-    },
-    tls: {
-        rejectUnauthorized: false
-    }
+const [username = 'your_username1', password = 'your_password2'] = process.argv.slice(2);
+
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST ?? 'localhost',
+    port: Number(process.env.SMTP_PORT ?? 2525),
+    secure: /^(1|true|yes|on)$/i.test(process.env.SMTP_SECURE ?? 'false'),
+    auth: { user: username, pass: password },
 });
 
-// Set up email data
-let mailOptions = {
-    from: '"Sender Name" <sender@example.com>', // Sender address
-    to: 'recipient@example.com', // List of recipients
-    subject: 'Hello', // Subject line
-    text: 'Hello world?', // Plain text body
-    html: '<b>Hello world?</b>' // HTML body
-};
-
-// Send mail with defined transport object
-transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-        return console.log(error);
-    }
+try {
+    const info = await transporter.sendMail({
+        from: '"Sender Name" <sender@example.com>',
+        to: 'recipient@example.com',
+        subject: 'Hello',
+        text: 'Hello world?',
+        html: '<b>Hello world?</b>',
+    });
     console.log('Message sent: %s', info.messageId);
-});
+} catch (err) {
+    console.error('Could not send the message:', err.message);
+    process.exitCode = 1;
+}

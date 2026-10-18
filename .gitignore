@@ -1,4 +1,6 @@
 node_modules
 pnpm-lock.yaml
-emails.sql
+# SQLite database (+ its -wal/-shm files): private emails and credentials
+emails.sql*
 *.bck
+.env

@@ -1,128 +1,33 @@
-import fs from 'fs';
-import { SMTPServer } from 'smtp-server';
-import sqlite3 from 'sqlite3';
+import { loadConfig, loadEnvFile } from './src/config.js';
+import { openDatabase } from './src/db.js';
+import { exitOnStartupError, handleShutdown, warnIfRoot } from './src/lifecycle.js';
+import { createLogger } from './src/log.js';
+import { startSmtpServer } from './src/smtp.js';
 
-// Create or open the SQLite database
-const db = new sqlite3.Database('./emails.sql', (err) => {
-    if (err) {
-        console.error("Error opening SQLite database", err);
-    } else {
-        console.log("Connected to SQLite database");
-    }
-});
+loadEnvFile();
+// Files created by this process (the database) are only accessible by its user
+process.umask(0o077);
 
-// Create the emails table if it doesn't exist
-db.run(`
-  CREATE TABLE IF NOT EXISTS emails (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT,
-    password TEXT,
-    sender TEXT,
-    recipients TEXT,
-    subject TEXT,
-    content TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_read BOOLEAN DEFAULT 0
-  )
-`);
+const log = createLogger('smtp');
 
-// Check if the is_read column exists, and add it if it doesn't
-db.all("PRAGMA table_info(emails)", (err, columns) => {
-    if (err) {
-        console.error("Error checking table info:", err);
-    } else {
-        const columnNames = columns.map(column => column.name);
-        if (!columnNames.includes('is_read')) {
-            db.run("ALTER TABLE emails ADD COLUMN is_read BOOLEAN DEFAULT 0", (err) => {
-                if (err) {
-                    console.error("Error adding is_read column:", err);
-                } else {
-                    console.log("is_read column added to emails table");
-                }
-            });
-        }
-    }
-});
+async function main() {
+    const config = loadConfig();
+    warnIfRoot(log);
 
-const server = new SMTPServer({
-    secure: true,
-    key: fs.readFileSync("/etc/letsencrypt/live/test.opentrust.it/privkey.pem"),
-    cert: fs.readFileSync("/etc/letsencrypt/live/test.opentrust.it/fullchain.pem"),
-    authOptional: true,
-    allowInsecureAuth: true,
-    onData(stream, session, callback) {
-        let emailData = '';
+    const db = openDatabase(config.dbPath, { log });
+    const smtp = await startSmtpServer({ db, config: config.smtp, log });
 
-        stream.on('data', chunk => {
-            emailData += chunk;
-        });
+    const { address, port } = smtp.address;
+    const mode = config.smtp.secure ? 'implicit TLS' : 'PLAIN TEXT, development only';
+    log.info(`SMTP server listening on ${address.includes(':') ? `[${address}]` : address}:${port} (${mode})`);
 
-        stream.on('end', () => {
-            // console.log('Email received');
+    // `pm2 sendSignal SIGHUP email-staging-smtp` reloads the TLS certificate right away
+    process.on('SIGHUP', () => smtp.reloadCertificates());
 
-            const credentials = session.credentials;
+    handleShutdown(log, async () => {
+        await smtp.close();
+        db.close();
+    });
+}
 
-            // Parse the email content
-            const sender = session.envelope.mailFrom.address;
-            const recipients = session.envelope.rcptTo.map(rcpt => rcpt.address).join(', ');
-            const subject = emailData.match(/Subject: (.*)/)?.[1] || 'No subject';
-            const content = emailData;
-
-            // Insert email into SQLite
-            const stmt = db.prepare("INSERT INTO emails (username, password, sender, recipients, subject, content) VALUES (?, ?, ?, ?, ?, ?)");
-            stmt.run(credentials.username, credentials.password, sender, recipients, subject, content, function (err) {
-                if (err) {
-                    // console.error("Error inserting email into SQLite:", err);
-                } else {
-                    // console.log("Email saved to SQLite");
-                }
-            });
-            stmt.finalize();
-
-            callback(); // Signal completion
-        });
-    },
-
-    onSecure(socket, session, callback) {
-        callback();
-    },
-
-    onAuth(auth, session, callback) {
-        const username = auth.username;
-        const password = auth.password;
-        // store the username and password in the session
-        session.credentials = { username, password };
-        callback(null, { user: auth.username });
-    },
-
-    // Handle SMTP session details
-    onConnect(session, callback) {
-        // console.log('Client connected');
-        callback();
-    },
-
-    onMailFrom(address, session, callback) {
-        // console.log(`Mail from: ${address.address}`);
-        callback();
-    },
-
-    onRcptTo(address, session, callback) {
-        // console.log(`Mail to: ${address.address}`);
-        callback();
-    },
-
-    onQuit(callback) {
-        // console.log('Client disconnected');
-        callback();
-    }
-});
-
-// Gestore di errori per catturare eventuali errori TLS
-server.on('error', (err) => {
-    // console.error('SMTP Server Error:', err);
-});
-
-// Start the mock SMTP server on port 2525
-server.listen(2525, () => {
-    console.log('SMTP server listening on port 2525');
-});
+main().catch(exitOnStartupError(log));
