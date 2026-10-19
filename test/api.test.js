@@ -125,6 +125,34 @@ describe('HTTP API (contract used by the stg-email client)', () => {
         assert.deepEqual(empty, { username: 'empty', password: 'inbox', totalEmails: 0, lastEmailDate: null });
     });
 
+    test('GET routes accept the credentials in an Authorization: Basic header (no secrets in URLs)', async (t) => {
+        const { app, db } = await setup(t);
+        const password = 'p\u00e4ss: w\u00f6rd & x=1 \u2713'; // UTF-8, colon, spaces, URL syntax
+        const ids = seed(db, 2, { username: 'inbox', password });
+        const headers = { authorization: `Basic ${Buffer.from(`inbox:${password}`).toString('base64')}` };
+
+        const list = await app.inject({ url: '/emails', headers });
+        assert.equal(list.statusCode, 200);
+        assert.deepEqual(list.json().map((email) => email.id), [ids[1], ids[0]]);
+
+        const one = await app.inject({ url: `/emails/${ids[0]}`, headers });
+        assert.equal(one.json().id, ids[0]);
+
+        const delta = await app.inject({ url: `/emails/delta?latest=${ids[0]}`, headers });
+        assert.deepEqual(delta.json().map((email) => email.id), [ids[1]]);
+
+        // The header wins over credentials left in the query string
+        const both = await app.inject({ url: `/emails?${query({ password: 'wrong' })}`, headers });
+        assert.equal(both.json().length, 2);
+
+        const encode = (value) => `Basic ${Buffer.from(value).toString('base64')}`;
+        for (const authorization of ['Bearer abc', 'Basic !!!', encode('no-colon'), encode(':password-only')]) {
+            const response = await app.inject({ url: '/emails', headers: { authorization } });
+            assert.equal(response.statusCode, 400, authorization);
+            assert.equal(typeof response.json().error, 'string');
+        }
+    });
+
     test('POST /emails/burn: deletes the inbox, 404 when already empty', async (t) => {
         const { app, db } = await setup(t);
         seed(db, 3);
@@ -219,6 +247,21 @@ describe('HTTP API hardening', () => {
         assert.equal(response.statusCode, 204);
         assert.equal(response.headers['access-control-allow-origin'], '*');
         assert.match(response.headers['access-control-allow-methods'], /PATCH/);
+    });
+
+    test('CORS: browsers may send the Authorization header', async (t) => {
+        const { app } = await setup(t);
+        const response = await app.inject({
+            method: 'OPTIONS',
+            url: '/emails/delta?latest=0',
+            headers: {
+                origin: 'https://wincisky.github.io',
+                'access-control-request-method': 'GET',
+                'access-control-request-headers': 'authorization',
+            },
+        });
+        assert.equal(response.statusCode, 204);
+        assert.match(response.headers['access-control-allow-headers'], /authorization/i);
     });
 
     test('CORS can be restricted to known origins', async (t) => {

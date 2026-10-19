@@ -20,6 +20,31 @@ const emailId = {
 };
 
 /**
+ * GET routes take the inbox credentials from `Authorization: Basic base64(utf8(username:password))`,
+ * which keeps them out of URLs (and so out of proxy logs), or from the query string (older clients).
+ * The header wins when both are present.
+ */
+async function credentialsFromAuthorizationHeader(request, reply) {
+    const header = request.headers.authorization;
+    if (header === undefined) return;
+    const credentials = parseBasicAuth(header);
+    if (!credentials) {
+        return reply.code(400).send({ error: 'Invalid Authorization header: expected Basic credentials' });
+    }
+    request.query.username = credentials.username;
+    request.query.password = credentials.password;
+}
+
+function parseBasicAuth(header) {
+    const match = /^Basic +([A-Za-z0-9+/]+={0,2})$/i.exec(header.trim());
+    if (!match) return null;
+    const decoded = Buffer.from(match[1], 'base64').toString('utf8');
+    const separator = decoded.indexOf(':'); // RFC 7617: the username can't contain ":", the password can
+    if (separator === -1) return null;
+    return { username: decoded.slice(0, separator), password: decoded.slice(separator + 1) };
+}
+
+/**
  * HTTP API used by the web client (stg-email) to read the inboxes.
  * An inbox is identified by the SMTP username + password used to send the emails.
  */
@@ -69,6 +94,7 @@ export async function buildApi({ db, config, log }) {
     app.get(
         '/emails',
         {
+            preValidation: credentialsFromAuthorizationHeader,
             schema: {
                 querystring: {
                     type: 'object',
@@ -89,6 +115,7 @@ export async function buildApi({ db, config, log }) {
     app.get(
         '/emails/delta',
         {
+            preValidation: credentialsFromAuthorizationHeader,
             schema: {
                 querystring: {
                     type: 'object',
@@ -106,12 +133,16 @@ export async function buildApi({ db, config, log }) {
         },
     );
 
-    app.get('/emails/:id', { schema: { params: emailId, querystring: credentials } }, async (request, reply) => {
-        const { username, password } = request.query;
-        const email = db.getEmail(username, password, request.params.id);
-        if (!email) return reply.code(404).send({ error: 'Email not found' });
-        return email;
-    });
+    app.get(
+        '/emails/:id',
+        { preValidation: credentialsFromAuthorizationHeader, schema: { params: emailId, querystring: credentials } },
+        async (request, reply) => {
+            const { username, password } = request.query;
+            const email = db.getEmail(username, password, request.params.id);
+            if (!email) return reply.code(404).send({ error: 'Email not found' });
+            return email;
+        },
+    );
 
     app.patch('/emails/read/all', { schema: { body: credentials } }, async (request) => {
         const { username, password } = request.body;

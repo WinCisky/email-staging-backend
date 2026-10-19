@@ -103,7 +103,7 @@ ports in the security list too. Port 3628 must never be public (the API only lis
 
 ### nginx (HTTPS for the API)
 
-The web client sends the inbox credentials in query strings: keep them out of the access log, and pass
+Older web clients send the inbox credentials in query strings: keep them out of the access log, and pass
 the client address (used by the rate limiter).
 
 ```nginx
@@ -147,13 +147,15 @@ Moving to the setup above (unprivileged user) is strongly recommended:
 
 ## HTTP API
 
-Inbox credentials in the query string (`GET`) or JSON body (`POST`/`PATCH`). Errors are `{ "error": "..." }`.
+Inbox credentials: for `GET`, an `Authorization: Basic base64(username:password)` header (UTF-8; keeps them
+out of URLs and logs) or, for older clients, `username`/`password` query parameters; for `POST`/`PATCH`, the
+JSON body. Errors are `{ "error": "..." }`.
 
 | Method | Path | Input | Returns |
 | --- | --- | --- | --- |
-| GET | `/emails` | `username`, `password`, `page` (default 1) | 10 emails, newest first |
-| GET | `/emails/:id` | `username`, `password` | the email, or 404 |
-| GET | `/emails/delta` | `username`, `password`, `latest` (id) | emails with id > `latest`, oldest first (max 50) |
+| GET | `/emails` | credentials, `page` (default 1) | 10 emails, newest first |
+| GET | `/emails/:id` | credentials | the email, or 404 |
+| GET | `/emails/delta` | credentials, `latest` (id) | emails with id > `latest`, oldest first (max 50) |
 | PATCH | `/emails/read/:id` | `{ username, password }` | `{ success }`, or 404 |
 | PATCH | `/emails/read/all` | `{ username, password }` | `{ success, updated }` |
 | POST | `/emails/stats` | `[{ username, password }]` (max 100) | `[{ username, password, totalEmails, lastEmailDate }]` |
