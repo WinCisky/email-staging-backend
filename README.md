@@ -92,7 +92,7 @@ SMTP_TLS_CERT=/home/mailcatcher/certs/fullchain.pem
 ```
 
 The SMTP server checks the files every 6 hours and switches to a renewed certificate without restarting
-(right away: `pm2 sendSignal SIGHUP email-staging-smtp`). It warns in the logs 7 days before expiry.
+(right away: `pm2 sendSignal SIGHUP email-smtp`). It warns in the logs 7 days before expiry.
 
 ### Ports and firewall
 
@@ -132,7 +132,10 @@ The existing `/var/log/nginx/access.log*` files contain inbox passwords: delete 
 
 A plain update keeps working with the defaults (even as root, with a warning in the logs): first
 `npm install -g pm2@latest && pm2 update` (pm2 ≥ 7 is required: the `require-in-the-middle` dependency,
-a workaround for older pm2, is gone), then `git pull && npm ci --omit=dev` and restart. Check that:
+a workaround for older pm2, is gone), then `git pull && npm ci --omit=dev` and replace the old processes with
+the ones of `ecosystem.config.cjs` (same names, `email-smtp` and `email-api`, but with graceful shutdown, memory
+limit...; a `pm2 restart` would keep the old definitions):
+`pm2 delete email-smtp email-api && pm2 start ecosystem.config.cjs && pm2 save`. Check that:
 
 - the database is now always `<project dir>/emails.sql`, while before it was relative to the directory pm2
   was started from: if yours is elsewhere, set `DB_PATH` or move it (with any `emails.sql-wal`/`-shm` file);
@@ -140,7 +143,7 @@ a workaround for older pm2, is gone), then `git pull && npm ci --omit=dev` and r
 
 Moving to the setup above (unprivileged user) is strongly recommended:
 
-1. Old processes probably run under root's pm2: `sudo pm2 ls`, `sudo pm2 delete <their names>`, `sudo pm2 save`
+1. Old processes probably run under root's pm2: `sudo pm2 delete email-smtp email-api`, `sudo pm2 save`
    (and `sudo pm2 unstartup systemd` if nothing else uses root's pm2).
 2. Keep the data: move `emails.sql` into the new checkout and `sudo chown mailcatcher:mailcatcher emails.sql*`.
    The schema is migrated (indexes added) on first start; permissions are tightened to `600`.

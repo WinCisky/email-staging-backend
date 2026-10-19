@@ -18,7 +18,7 @@ const shared = {
 
 module.exports = {
     apps: [
-        { ...shared, name: 'email-staging-smtp', script: './smtp-mock-server.js' },
-        { ...shared, name: 'email-staging-api', script: './api.js' },
+        { ...shared, name: 'email-smtp', script: './smtp-mock-server.js' },
+        { ...shared, name: 'email-api', script: './api.js' },
     ],
 };

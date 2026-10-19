@@ -21,7 +21,7 @@ async function main() {
     const mode = config.smtp.secure ? 'implicit TLS' : 'PLAIN TEXT, development only';
     log.info(`SMTP server listening on ${address.includes(':') ? `[${address}]` : address}:${port} (${mode})`);
 
-    // `pm2 sendSignal SIGHUP email-staging-smtp` reloads the TLS certificate right away
+    // `pm2 sendSignal SIGHUP email-smtp` reloads the TLS certificate right away
     process.on('SIGHUP', () => smtp.reloadCertificates());
 
     handleShutdown(log, async () => {
